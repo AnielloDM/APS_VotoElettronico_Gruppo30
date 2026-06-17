@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aps-voto-elettronico-gruppo30"
+version = "0.1.0"
+description = "Demo didattica standalone di un protocollo di voto elettronico"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "cryptography>=42.0.0",
+]
+
+[project.scripts]
+evote-demo = "evote_demo.gui:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
