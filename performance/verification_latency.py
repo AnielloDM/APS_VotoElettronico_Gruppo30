@@ -97,7 +97,7 @@ def main() -> None:
     parser.add_argument("--samples", type=positive_int, default=20, help="Numero di misurazioni per operazione.")
     parser.add_argument("--voters", type=positive_int, default=5, help="Numero di voti simulati.")
     args = parser.parse_args()
-    run(args.samples, args.voters, args.block_size)
+    run(args.samples, args.voters)
 
 
 if __name__ == "__main__":
