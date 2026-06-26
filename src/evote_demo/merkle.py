@@ -9,10 +9,14 @@ EMPTY_LEAF = ""
 
 
 def sha256(data: str) -> str:
+    """Calcola SHA-256 su una stringa e restituisce l'hash esadecimale."""
+
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
 
 def build_merkle_tree(data_list: list[str]) -> tuple[str, list[list[str]]]:
+    """Costruisce l'albero di Merkle e restituisce root e livelli."""
+
     if not data_list:
         raise ValueError("data_list must not be empty")
 
@@ -28,6 +32,8 @@ def build_merkle_tree(data_list: list[str]) -> tuple[str, list[list[str]]]:
 
 
 def generate_proof(leaf_index: int, tree: list[list[str]]) -> list[tuple[str, str]]:
+    """Crea il percorso di verifica per una foglia dell'albero."""
+
     proof: list[tuple[str, str]] = []
     index = leaf_index
 
@@ -43,6 +49,8 @@ def generate_proof(leaf_index: int, tree: list[list[str]]) -> list[tuple[str, st
 
 
 def verify_proof(data: str, proof: list[tuple[str, str]], root: str) -> bool:
+    """Verifica che un dato appartenga alla Merkle root indicata."""
+
     current = sha256(data)
 
     for position, sibling in proof:
@@ -55,6 +63,8 @@ def verify_proof(data: str, proof: list[tuple[str, str]], root: str) -> bool:
 
 
 def transaction_leaves(transactions: list[VoteTransaction], block_size: int) -> list[str]:
+    """Trasforma le transazioni in foglie, riempiendo il blocco se serve."""
+
     leaves = [tx.tx_hash for tx in transactions]
     while len(leaves) < block_size:
         leaves.append(EMPTY_LEAF)
@@ -62,11 +72,15 @@ def transaction_leaves(transactions: list[VoteTransaction], block_size: int) -> 
 
 
 def merkle_root(transactions: list[VoteTransaction], block_size: int) -> str:
+    """Calcola la Merkle root delle transazioni di un blocco."""
+
     root, _tree = build_merkle_tree(transaction_leaves(transactions, block_size))
     return root
 
 
 def merkle_proof(transactions: list[VoteTransaction], block_size: int, tx_hash: str) -> tuple[MerkleProofStep, ...]:
+    """Genera la prova Merkle per una transazione presente nel blocco."""
+
     leaves = transaction_leaves(transactions, block_size)
     try:
         index = leaves.index(tx_hash)
@@ -78,6 +92,8 @@ def merkle_proof(transactions: list[VoteTransaction], block_size: int, tx_hash: 
 
 
 def verify_merkle_proof(tx_hash: str, proof: tuple[MerkleProofStep, ...], expected_root: str) -> bool:
+    """Controlla una prova Merkle usando il formato dati della demo."""
+
     return verify_proof(
         tx_hash,
         [(step.sibling_position, step.sibling_hash) for step in proof],

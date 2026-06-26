@@ -37,6 +37,8 @@ ALERT_ERROR_MESSAGES = {
 
 @dataclass
 class UserSession:
+    """Stato locale di un elettore durante la simulazione."""
+
     client: VoterClient
     credential: Credential | None = None
     auth_signature: str | None = None
@@ -46,7 +48,11 @@ class UserSession:
 
 
 class ProtocolDemoApp(tk.Tk):
+    """Finestra Tkinter che guida la demo del protocollo di voto."""
+
     def __init__(self) -> None:
+        """Prepara finestra, variabili Tkinter e stato iniziale."""
+
         super().__init__()
         self.title("EVOTE gruppo 30")
         self.geometry("1100x720")
@@ -67,6 +73,8 @@ class ProtocolDemoApp(tk.Tk):
         self.reset_protocol()
 
     def _build_widgets(self) -> None:
+        """Costruisce la struttura principale della finestra."""
+
         self.columnconfigure(0, weight=1)
         self.rowconfigure(2, weight=1)
 
@@ -105,6 +113,8 @@ class ProtocolDemoApp(tk.Tk):
         self._build_system_panel(system_area)
 
     def _build_voter_panel(self, parent: ttk.Frame) -> None:
+        """Crea i controlli usati dall'elettore nella parte sinistra."""
+
         access = ttk.LabelFrame(parent, text="1. Accesso dell'elettore", padding=12)
         access.grid(row=0, column=0, sticky="ew", pady=(0, 10))
         access.columnconfigure(3, weight=1)
@@ -178,6 +188,8 @@ class ProtocolDemoApp(tk.Tk):
         self.log.grid(row=1, column=0, sticky="nsew", pady=(6, 0))
 
     def _build_system_panel(self, parent: ttk.Frame) -> None:
+        """Crea pannelli di blockchain, scrutinio e controlli di protocollo."""
+
         actions = ttk.Frame(parent)
         actions.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         actions.columnconfigure(2, weight=1)
@@ -233,6 +245,8 @@ class ProtocolDemoApp(tk.Tk):
         self.checks_table.grid(row=0, column=0, sticky="nsew")
 
     def reset_protocol(self) -> None:
+        """Riporta la demo allo stato iniziale con componenti nuovi."""
+
         (
             self.election,
             self.auth,
@@ -257,11 +271,15 @@ class ProtocolDemoApp(tk.Tk):
         self._refresh()
 
     def switch_voter(self) -> None:
+        """Aggiorna la vista quando viene scelto un altro elettore."""
+
         self._log_event("Cambio elettore")
         self._log(f"Sessione utente selezionata: {self.voter_var.get()}.")
         self._refresh()
 
     def request_credential(self) -> None:
+        """Richiede una credenziale o recupera la ricevuta gia disponibile."""
+
         voter_id = self.voter_var.get()
         session = self.sessions[voter_id]
         self._log_event(f"Richiesta credenziale - {voter_id}")
@@ -295,6 +313,8 @@ class ProtocolDemoApp(tk.Tk):
         self._refresh()
 
     def prepare_ballot(self) -> None:
+        """Crea la scheda cifrata e firmata per l'elettore selezionato."""
+
         voter_id = self.voter_var.get()
         session = self.sessions[voter_id]
         self._log_event(f"Preparazione scheda - {voter_id}")
@@ -325,6 +345,8 @@ class ProtocolDemoApp(tk.Tk):
         self._refresh()
 
     def submit_ballot(self) -> None:
+        """Invia la scheda al server di voto, applicando eventuali scenari."""
+
         voter_id = self.voter_var.get()
         session = self.sessions[voter_id]
         self._log_event(f"Invio voto - {voter_id}")
@@ -361,6 +383,8 @@ class ProtocolDemoApp(tk.Tk):
         self._refresh()
 
     def process_pool(self, auto_triggered: bool = False) -> None:
+        """Fa lavorare i validatori sui voti in attesa nella pool."""
+
         self._log_event("Validazione automatica" if auto_triggered else "Validazione distribuita")
         if len(self.pool) == 0:
             self._log("Vote Pool vuota: nessun voto da validare.")
@@ -393,6 +417,8 @@ class ProtocolDemoApp(tk.Tk):
         self._refresh()
 
     def _verify_receipt_for_voter(self, voter_id: str, show_dialog: bool) -> None:
+        """Verifica passo passo la ricevuta di un elettore."""
+
         self._log_event(f"Verifica ricevuta - {voter_id}")
         receipt = self.auth.get_receipt(voter_id)
         if receipt is None:
@@ -464,6 +490,8 @@ class ProtocolDemoApp(tk.Tk):
         self._refresh()
 
     def verify_receipt(self) -> None:
+        """Avvia la verifica della ricevuta per l'elettore selezionato."""
+
         voter_id = self.voter_var.get()
         session = self.sessions[voter_id]
         if not session.receipt_revealed:
@@ -474,6 +502,8 @@ class ProtocolDemoApp(tk.Tk):
         self._verify_receipt_for_voter(voter_id, show_dialog=True)
 
     def show_tally(self) -> None:
+        """Mostra il conteggio finale calcolato dall'autorita di scrutinio."""
+
         self._log_event("Scrutinio")
         tally = self.scrutiny.tally(self.blockchain)
         self._clear_tally()
@@ -484,6 +514,8 @@ class ProtocolDemoApp(tk.Tk):
         self._refresh()
 
     def _refresh(self) -> None:
+        """Aggiorna testi, pulsanti e tabella dei blocchi."""
+
         voter_id = self.voter_var.get()
         session = self.sessions[voter_id]
         receipt = self.auth.get_receipt(voter_id)
@@ -552,12 +584,16 @@ class ProtocolDemoApp(tk.Tk):
             )
 
     def _show_error(self, title: str, exc: Exception) -> None:
+        """Mostra un errore in modo comprensibile e aggiorna la GUI."""
+
         message = self._localized_error_message(exc)
         self._log(f"{title}: {message}")
         messagebox.showerror(title, message)
         self._refresh()
 
     def _localized_error_message(self, exc: Exception) -> str:
+        """Traduce gli errori tecnici in messaggi semplici per l'utente."""
+
         raw_message = str(exc).strip()
         normalized_message = raw_message.strip("'\"")
         if normalized_message.startswith("invalid choice: "):
@@ -569,6 +605,8 @@ class ProtocolDemoApp(tk.Tk):
         )
 
     def _payload_for_submission(self, session: UserSession) -> VotePayload:
+        """Prepara il payload da inviare, includendo eventuali manomissioni."""
+
         assert session.payload is not None
         payload = session.payload
         selected_scenarios = self._selected_scenarios()
@@ -591,9 +629,13 @@ class ProtocolDemoApp(tk.Tk):
         return payload
 
     def _selected_scenarios(self) -> list[str]:
+        """Restituisce gli scenari non validi selezionati nella GUI."""
+
         return [name for name, enabled in self.scenario_vars.items() if enabled.get()]
 
     def _record_checks(self, phase: str, checks: list[CheckResult]) -> None:
+        """Aggiunge alla tabella i controlli eseguiti in una fase."""
+
         for check in checks:
             self.checks_table.insert(
                 "",
@@ -602,34 +644,48 @@ class ProtocolDemoApp(tk.Tk):
             )
 
     def _clear_checks(self) -> None:
+        """Svuota la tabella dei controlli."""
+
         for item in self.checks_table.get_children():
             self.checks_table.delete(item)
 
     def _log_event(self, name: str) -> None:
+        """Scrive nel log un separatore per una nuova fase."""
+
         self._log(f"---- {name} ----")
 
     def _log(self, message: str) -> None:
+        """Aggiunge una riga al log della procedura."""
+
         self.log.configure(state="normal")
         self.log.insert(tk.END, message + "\n")
         self.log.see(tk.END)
         self.log.configure(state="disabled")
 
     def _clear_log(self) -> None:
+        """Svuota il log della procedura."""
+
         self.log.configure(state="normal")
         self.log.delete("1.0", tk.END)
         self.log.configure(state="disabled")
 
     def _write_tally(self, text: str) -> None:
+        """Scrive testo nel riquadro dello scrutinio."""
+
         self.tally_box.configure(state="normal")
         self.tally_box.insert(tk.END, text)
         self.tally_box.configure(state="disabled")
 
     def _clear_tally(self) -> None:
+        """Svuota il riquadro dello scrutinio."""
+
         self.tally_box.configure(state="normal")
         self.tally_box.delete("1.0", tk.END)
         self.tally_box.configure(state="disabled")
 
     def _format_receipt_details(self, receipt: Receipt | None) -> str:
+        """Formatta una ricevuta completa in testo leggibile."""
+
         if receipt is None:
             return "Ricevuta: non disponibile"
         proof_lines = []
@@ -648,6 +704,8 @@ class ProtocolDemoApp(tk.Tk):
         )
 
     def _format_merkle_proof(self, receipt: Receipt) -> str:
+        """Formatta in breve i passi della Merkle proof."""
+
         if not receipt.merkle_proof:
             return "Mancante!"
         lines = []
@@ -657,6 +715,8 @@ class ProtocolDemoApp(tk.Tk):
 
 
 def main() -> None:
+    """Avvia l'applicazione grafica della demo."""
+
     app = ProtocolDemoApp()
     app.mainloop()
 

@@ -9,6 +9,8 @@ from evote_demo.merkle import merkle_proof, merkle_root, verify_merkle_proof
 
 
 def run(samples: int = 50) -> None:
+    """Esegue i benchmark delle operazioni crittografiche principali."""
+
     _election, auth, scrutiny, _voting, _pool, blockchain, _network, artifacts, blocks = submit_votes(
         voters=8,
         block_size=8,
@@ -59,6 +61,8 @@ def run(samples: int = 50) -> None:
 
 
 def main() -> None:
+    """Legge gli argomenti CLI e avvia il benchmark crittografico."""
+
     parser = argparse.ArgumentParser(description="Misura il costo locale delle operazioni crittografiche.")
     parser.add_argument("--samples", type=positive_int, default=50, help="Numero di misurazioni per operazione.")
     args = parser.parse_args()

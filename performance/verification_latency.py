@@ -6,6 +6,8 @@ from common import build_system, measure_prepared, positive_int, print_measureme
 
 
 def prepare_credential_issue():
+    """Prepara lo stato per misurare il rilascio della credenziale."""
+
     from evote_demo.services import VoterClient
 
     _election, auth, _scrutiny, _voting, _pool, _blockchain, _network = build_system(voters=1, block_size=4)
@@ -14,6 +16,8 @@ def prepare_credential_issue():
 
 
 def prepare_build_vote():
+    """Prepara lo stato per misurare la costruzione del voto."""
+
     from evote_demo.services import VoterClient
 
     election, auth, scrutiny, _voting, _pool, _blockchain, _network = build_system(voters=1, block_size=4)
@@ -23,6 +27,8 @@ def prepare_build_vote():
 
 
 def prepare_receive_vote():
+    """Prepara lo stato per misurare l'invio al server di voto."""
+
     from evote_demo.services import VoterClient
 
     election, auth, scrutiny, voting, pool, _blockchain, _network = build_system(voters=1, block_size=4)
@@ -33,14 +39,20 @@ def prepare_receive_vote():
 
 
 def prepare_process_pool(voters: int, block_size: int):
+    """Prepara voti in pool senza processarli."""
+
     return submit_votes(voters=voters, block_size=block_size, process=False)
 
 
 def prepare_processed(voters: int, block_size: int):
+    """Prepara uno scenario gia processato dai validatori."""
+
     return submit_votes(voters=voters, block_size=block_size, process=True)
 
 
 def run(samples: int = 20, voters: int = 5, block_size: int = 4) -> None:
+    """Misura le latenze delle interazioni principali della demo."""
+
     measurements = [
         measure_prepared(
             "Interazione: rilascio credenziale",
@@ -93,6 +105,8 @@ def run(samples: int = 20, voters: int = 5, block_size: int = 4) -> None:
 
 
 def main() -> None:
+    """Legge gli argomenti CLI e avvia il benchmark di latenza."""
+
     parser = argparse.ArgumentParser(description="Misura latenze locali delle verifiche e delle interazioni.")
     parser.add_argument("--samples", type=positive_int, default=20, help="Numero di misurazioni per operazione.")
     parser.add_argument("--voters", type=positive_int, default=5, help="Numero di voti simulati.")

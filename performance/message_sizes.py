@@ -6,10 +6,14 @@ from evote_demo.crypto import canonical_json
 
 
 def byte_len(value: object) -> int:
+    """Calcola quanti byte occupa un valore nel JSON canonico."""
+
     return len(canonical_json(value))
 
 
 def run() -> None:
+    """Stampa dimensioni dei messaggi e grandezze strutturali."""
+
     _election, auth, _scrutiny, _voting, _pool, _blockchain, network, artifacts, blocks = submit_votes(
         voters=5,
         block_size=4,
@@ -53,6 +57,8 @@ def run() -> None:
 
 
 def main() -> None:
+    """Avvia la stampa delle dimensioni dei messaggi."""
+
     run()
 
 

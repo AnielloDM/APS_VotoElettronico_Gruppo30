@@ -32,7 +32,11 @@ from .models import (
 
 
 class AuthenticationServer:
+    """Gestisce aventi diritto, credenziali anonime e ricevute."""
+
     def __init__(self, election: Election, eligible_voters: set[str]) -> None:
+        """Prepara il server con elezione, elettori validi e chiavi RSA."""
+
         self.election = election
         self.keys = generate_rsa_keypair()
         self._eligible_voters = eligible_voters
@@ -41,9 +45,13 @@ class AuthenticationServer:
 
     @property
     def public_key_pem(self) -> str:
+        """Espone la chiave pubblica usata per verificare le credenziali."""
+
         return public_key_to_pem(self.keys.public_key)
 
     def inspect_credential_request(self, voter_id: str) -> list["CheckResult"]:
+        """Mostra i controlli fatti prima di emettere una credenziale."""
+
         has_receipt = "receipt" in self._records.get(voter_id, {})
         return [
             CheckResult(
@@ -59,6 +67,8 @@ class AuthenticationServer:
         ]
 
     def issue_credential(self, voter_id: str, anon_public_key_pem: str) -> tuple[Credential, str]:
+        """Rilascia o riusa un ticket anonimo per un elettore valido."""
+
         if voter_id not in self._eligible_voters:
             raise PermissionError("voter is not eligible for this election")
         record = self._records.setdefault(voter_id, {})
@@ -71,12 +81,16 @@ class AuthenticationServer:
         return credential, sign(self.keys.private_key, credential.to_signable())
 
     def store_receipt(self, ticket: str, receipt: Receipt) -> None:
+        """Salva la ricevuta accettata collegandola al ticket anonimo."""
+
         voter_id = self._ticket_owner.get(ticket)
         if voter_id is None:
             raise KeyError("unknown ticket")
         self._records.setdefault(voter_id, {})["receipt"] = receipt
 
     def reissue_ticket_for_rejected_vote(self, ticket: str) -> tuple[str, str] | None:
+        """Genera un nuovo ticket se il voto precedente e stato rifiutato."""
+
         voter_id = self._ticket_owner.get(ticket)
         if voter_id is None:
             return None
@@ -92,17 +106,25 @@ class AuthenticationServer:
         return voter_id, new_ticket
 
     def get_receipt(self, voter_id: str) -> Receipt | None:
+        """Restituisce la ricevuta di un elettore, se esiste."""
+
         receipt = self._records.get(voter_id, {}).get("receipt")
         return receipt if isinstance(receipt, Receipt) else None
 
 
 class VoterClient:
+    """Simula il dispositivo dell'elettore con una chiave anonima."""
+
     def __init__(self, voter_id: str) -> None:
+        """Crea una sessione locale per un elettore."""
+
         self.voter_id = voter_id
         self.anon_keys = generate_rsa_keypair()
 
     @property
     def anon_public_key_pem(self) -> str:
+        """Restituisce la chiave pubblica anonima da inserire nella credenziale."""
+
         return public_key_to_pem(self.anon_keys.public_key)
 
     def build_vote(
@@ -113,6 +135,8 @@ class VoterClient:
         credential: Credential | None = None,
         auth_signature: str = "",
     ) -> VotePayload:
+        """Cifra la scelta e firma il payload con la chiave anonima."""
+
         election.validate_choice(choice)
         if credential is None:
             credential = Credential(
@@ -135,7 +159,11 @@ class VoterClient:
         return VotePayload(credential, auth_signature, nonce, encrypted_vote, anon_signature)
 
 class VotingServer:
+    """Riceve i voti cifrati e li mette nella Vote Pool."""
+
     def __init__(self, auth_public_key_pem: str) -> None:
+        """Configura il server con la chiave del server di autenticazione."""
+
         self.keys = generate_rsa_keypair()
         self.auth_public_key = public_key_from_pem(auth_public_key_pem)
         self.used_nonces: set[str] = set()
@@ -143,9 +171,13 @@ class VotingServer:
 
     @property
     def public_key_pem(self) -> str:
+        """Espone la chiave pubblica del server di voto."""
+
         return public_key_to_pem(self.keys.public_key)
 
     def inspect_payload(self, payload: VotePayload) -> list["CheckResult"]:
+        """Restituisce i controlli di validita fatti sul voto ricevuto."""
+
         auth_signature_ok = verify(self.auth_public_key, payload.credential.to_signable(), payload.auth_signature)
         anon_public_key = public_key_from_pem(payload.credential.anon_public_key_pem)
         anon_signature_ok = verify(anon_public_key, payload.anon_signable(), payload.anon_signature)
@@ -169,6 +201,8 @@ class VotingServer:
         ]
 
     def receive_vote(self, payload: VotePayload, vote_pool: "VotePool") -> VotePoolItem:
+        """Valida il voto, firma la presa in carico e lo inserisce nella pool."""
+
         self._validate_payload(payload)
         ticket = payload.credential.ticket
         if ticket in self.used_tickets:
@@ -180,11 +214,15 @@ class VotingServer:
         return item
 
     def forward_vote_unchecked(self, payload: VotePayload, vote_pool: "VotePool") -> VotePoolItem:
+        """Inoltra un voto senza controlli, usato per simulare un server compromesso."""
+
         item = VotePoolItem(payload, sign(self.keys.private_key, canonical_json(payload)))
         vote_pool.push(item)
         return item
 
     def _validate_payload(self, payload: VotePayload) -> None:
+        """Blocca replay e firme non valide prima di accettare il voto."""
+
         if payload.nonce in self.used_nonces:
             raise ValueError("replayed nonce")
         if not verify(self.auth_public_key, payload.credential.to_signable(), payload.auth_signature):
@@ -195,40 +233,62 @@ class VotingServer:
 
 
 class VotePool:
+    """Coda temporanea dei voti in attesa dei validatori."""
+
     def __init__(self) -> None:
+        """Crea una pool vuota."""
+
         self._items: list[VotePoolItem] = []
 
     def push(self, item: VotePoolItem) -> None:
+        """Aggiunge un voto alla pool."""
+
         self._items.append(item)
 
     def pop_batch(self, size: int) -> list[VotePoolItem]:
+        """Estrae al massimo size voti, mantenendo l'ordine di arrivo."""
+
         batch = self._items[:size]
         del self._items[:size]
         return batch
 
     def __len__(self) -> int:
+        """Restituisce quanti voti sono ancora in attesa."""
+
         return len(self._items)
 
 
 class Blockchain:
+    """Blockchain append-only che conserva i blocchi della demo."""
+
     def __init__(self, election_id: str, block_size: int = 4) -> None:
+        """Inizializza una catena vuota per una specifica elezione."""
+
         self.election_id = election_id
         self.block_size = block_size
         self.blocks: list[Block] = []
 
     @property
     def last_hash(self) -> str:
+        """Restituisce l'hash dell'ultimo blocco o lo zero hash iniziale."""
+
         return self.blocks[-1].block_hash if self.blocks else "0" * 64
 
     def contains_ticket(self, ticket: str) -> bool:
+        """Controlla se un ticket compare gia in una transazione registrata."""
+
         return any(tx.ticket == ticket for block in self.blocks for tx in block.transactions)
 
     def append(self, block: Block) -> None:
+        """Aggiunge un blocco solo se punta alla testa corrente della catena."""
+
         if block.header.previous_hash != self.last_hash:
             raise ValueError("block does not point to current chain head")
         self.blocks.append(block)
 
     def find_transaction(self, tx_hash: str) -> tuple[Block, VoteTransaction] | None:
+        """Cerca una transazione per hash e restituisce anche il suo blocco."""
+
         for block in self.blocks:
             for tx in block.transactions:
                 if tx.tx_hash == tx_hash:
@@ -236,6 +296,8 @@ class Blockchain:
         return None
 
     def verify_receipt(self, receipt: Receipt, notifier_public_key_pem: str) -> bool:
+        """Verifica firma e Merkle proof di una ricevuta individuale."""
+
         if not verify(public_key_from_pem(notifier_public_key_pem), receipt.signable(), receipt.notifier_signature):
             return False
         if receipt.block_index >= len(self.blocks):
@@ -248,13 +310,19 @@ class Blockchain:
 
 @dataclass
 class Validator:
+    """Validatore che controlla voti e firma blocchi accettati."""
+
     validator_id: str
 
     def __post_init__(self) -> None:
+        """Genera le chiavi del validatore dopo la creazione della dataclass."""
+
         self.keys = generate_rsa_keypair()
 
     @property
     def public_key_pem(self) -> str:
+        """Espone la chiave pubblica del validatore."""
+
         return public_key_to_pem(self.keys.public_key)
 
     def inspect_item(
@@ -264,6 +332,8 @@ class Validator:
         vote_server_public_key_pem: str,
         blockchain: Blockchain,
     ) -> list["CheckResult"]:
+        """Mostra i controlli che il validatore fa su un voto della pool."""
+
         payload = item.payload
         auth_signature_ok = verify(public_key_from_pem(auth_public_key_pem), payload.credential.to_signable(), payload.auth_signature)
         anon_public_key = public_key_from_pem(payload.credential.anon_public_key_pem)
@@ -303,6 +373,8 @@ class Validator:
         vote_server_public_key_pem: str,
         blockchain: Blockchain,
     ) -> bool:
+        """Restituisce True solo se ticket e firme del voto sono validi."""
+
         payload = item.payload
         if blockchain.contains_ticket(payload.credential.ticket):
             return False
@@ -314,10 +386,14 @@ class Validator:
         return verify(public_key_from_pem(vote_server_public_key_pem), canonical_json(payload), item.vote_server_signature)
 
     def sign_block(self, block_hash: str) -> str:
+        """Firma l'hash di un blocco approvato dal validatore."""
+
         return sign(self.keys.private_key, block_hash.encode("ascii"))
 
 
 class ValidatorNetwork:
+    """Coordina proposer, consenso dei validatori e notifiche delle ricevute."""
+
     def __init__(
         self,
         validators: list[Validator],
@@ -325,6 +401,8 @@ class ValidatorNetwork:
         voting_server: VotingServer,
         blockchain: Blockchain,
     ) -> None:
+        """Crea la rete e calcola la soglia di maggioranza."""
+
         if len(validators) < 3:
             raise ValueError("at least three validators are required")
         self.validators = validators
@@ -336,9 +414,13 @@ class ValidatorNetwork:
 
     @property
     def notifier(self) -> Validator:
+        """Restituisce il validatore che firma le ricevute per gli elettori."""
+
         return self.validators[0]
 
     def process_pool(self, vote_pool: VotePool, flush: bool = False) -> list[Block]:
+        """Trasforma i voti in blocchi finche la pool contiene dati validabili."""
+
         accepted_blocks: list[Block] = []
         while len(vote_pool) >= self.blockchain.block_size or (flush and len(vote_pool) > 0):
             batch = vote_pool.pop_batch(self.blockchain.block_size)
@@ -353,6 +435,8 @@ class ValidatorNetwork:
         return accepted_blocks
 
     def _propose_block(self, batch: list[VotePoolItem]) -> Block:
+        """Costruisce un blocco candidato partendo da un gruppo di voti."""
+
         proposer = self.validators[self._next_proposer]
         self._next_proposer = (self._next_proposer + 1) % len(self.validators)
 
@@ -394,6 +478,8 @@ class ValidatorNetwork:
         )
 
     def _collect_approvals(self, block: Block) -> dict[str, str]:
+        """Raccoglie firme dei validatori se il blocco e coerente."""
+
         approvals = {block.header.proposer_id: block.proposer_signature}
         seen_accepted_tickets: set[str] = set()
         if block.header.previous_hash != self.blockchain.last_hash:
@@ -417,6 +503,8 @@ class ValidatorNetwork:
         return approvals
 
     def _notify_receipts(self, block: Block) -> None:
+        """Crea e salva una ricevuta per ogni transazione accettata."""
+
         for tx in block.transactions:
             if tx.status != "accepted":
                 continue
@@ -437,6 +525,8 @@ class ValidatorNetwork:
             self.auth_server.store_receipt(tx.ticket, receipt)
 
     def _reissue_tickets_for_rejected_transactions(self, block: Block) -> None:
+        """Permette un nuovo tentativo ai voti rifiutati ma non gia accettati."""
+
         accepted_tickets = {tx.ticket for tx in block.transactions if tx.status == "accepted"}
         for tx in block.transactions:
             if tx.status != "rejected":
@@ -447,15 +537,23 @@ class ValidatorNetwork:
 
 
 class ScrutinyAuthority:
+    """Autorita che decifra i voti accettati e calcola il risultato."""
+
     def __init__(self, election: Election) -> None:
+        """Prepara chiavi e dati dell'autorita di scrutinio."""
+
         self.election = election
         self.keys = generate_rsa_keypair()
 
     @property
     def public_key_pem(self) -> str:
+        """Espone la chiave pubblica usata dagli elettori per cifrare."""
+
         return public_key_to_pem(self.keys.public_key)
 
     def tally(self, blockchain: Blockchain) -> Counter[str]:
+        """Conta solo i voti accettati presenti nella blockchain."""
+
         counts: Counter[str] = Counter({choice: 0 for choice in self.election.choices})
         for block in blockchain.blocks:
             for tx in block.transactions:
@@ -469,6 +567,8 @@ class ScrutinyAuthority:
 
 @dataclass(frozen=True)
 class CheckResult:
+    """Risultato leggibile di un controllo mostrato nella GUI."""
+
     name: str
     passed: bool
     detail: str
@@ -483,6 +583,8 @@ def build_demo_system() -> tuple[
     Blockchain,
     ValidatorNetwork,
 ]:
+    """Crea tutti i componenti della simulazione con dati di esempio."""
+
     election = Election("Elezione1", ("Lista A", "Lista B", "Lista C"))
     auth = AuthenticationServer(election, {"VR001", "VR002", "VR003", "VR004", "VR005"})
     scrutiny = ScrutinyAuthority(election)

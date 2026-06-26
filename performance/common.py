@@ -20,6 +20,8 @@ T = TypeVar("T")
 
 @dataclass(frozen=True)
 class Measurement:
+    """Risultato sintetico di una misurazione ripetuta."""
+
     name: str
     samples: int
     mean_ms: float
@@ -29,6 +31,8 @@ class Measurement:
 
 
 def positive_int(value: str) -> int:
+    """Converte un argomento CLI in intero positivo."""
+
     parsed = int(value)
     if parsed <= 0:
         raise argparse.ArgumentTypeError("value must be positive")
@@ -36,6 +40,8 @@ def positive_int(value: str) -> int:
 
 
 def measure(name: str, operation: Callable[[], object], samples: int, warmups: int = 3) -> Measurement:
+    """Misura il tempo di una operazione gia pronta da eseguire."""
+
     for _ in range(warmups):
         operation()
 
@@ -63,6 +69,8 @@ def measure_prepared(
     samples: int,
     warmups: int = 3,
 ) -> Measurement:
+    """Misura una operazione ricreando lo stato prima di ogni prova."""
+
     for _ in range(warmups):
         operation(prepare())
 
@@ -85,6 +93,8 @@ def measure_prepared(
 
 
 def print_measurements(title: str, measurements: Sequence[Measurement]) -> None:
+    """Stampa una lista di misure come tabella leggibile."""
+
     print(f"\n{title}")
     print("-" * len(title))
     headers = ("Operazione", "N", "Media ms", "Mediana ms", "Min ms", "Max ms")
@@ -103,6 +113,8 @@ def print_measurements(title: str, measurements: Sequence[Measurement]) -> None:
 
 
 def print_table(headers: Sequence[str], rows: Iterable[Sequence[str]]) -> None:
+    """Stampa righe testuali allineate in colonne."""
+
     materialized = [tuple(row) for row in rows]
     widths = [
         max(len(headers[index]), *(len(row[index]) for row in materialized))
@@ -117,10 +129,14 @@ def print_table(headers: Sequence[str], rows: Iterable[Sequence[str]]) -> None:
 
 
 def voter_id(index: int) -> str:
+    """Genera un identificativo elettore nel formato della demo."""
+
     return f"VR{index:03d}"
 
 
 def build_system(voters: int = 5, block_size: int = 4):
+    """Crea un sistema di voto parametrico per i benchmark."""
+
     from evote_demo.models import Election
     from evote_demo.services import (
         AuthenticationServer,
@@ -144,6 +160,8 @@ def build_system(voters: int = 5, block_size: int = 4):
 
 
 def submit_votes(voters: int = 5, block_size: int = 4, process: bool = True):
+    """Simula invio dei voti e, se richiesto, anche la validazione."""
+
     from evote_demo.services import VoterClient
 
     election, auth, scrutiny, voting, pool, blockchain, network = build_system(voters, block_size)
